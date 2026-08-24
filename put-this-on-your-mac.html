@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Put Terminal Organizer on your Mac</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0d0b;
+      --panel: #171614;
+      --panel-2: #1f1e1b;
+      --line: rgba(255, 247, 230, 0.08);
+      --ink: #f4efe6;
+      --muted: #b4aa9a;
+      --dim: #7d7468;
+      --blue: #4f8dff;
+      --blue-ink: #d7e6ff;
+      --gold: #e2d36b;
+      --warn: #e0a15a;
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: Sora, ui-sans-serif, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(79, 141, 255, 0.12), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(226, 211, 107, 0.08), transparent 45%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+    .wrap { width: min(920px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 80px; }
+    .eyebrow {
+      font-family: "Azeret Mono", ui-monospace, monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 14px;
+    }
+    h1 {
+      font-family: "Instrument Serif", serif; font-weight: 400;
+      font-size: clamp(2.4rem, 6vw, 4.2rem); line-height: 0.95;
+      margin: 0 0 16px; letter-spacing: -0.03em;
+    }
+    h1 em { font-style: italic; color: #fff7e8; }
+    .lede { font-size: 1.05rem; line-height: 1.55; color: var(--muted); max-width: 42rem; margin: 0 0 36px; }
+    .window {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+      border-bottom: 1px solid var(--line); background: #121110;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+    .chrome span { margin-left: 8px; font-size: 12px; color: var(--dim); }
+    .mock { display: grid; grid-template-columns: 220px 1fr; min-height: 180px; }
+    .side { border-right: 1px solid var(--line); padding: 12px 10px; background: #141312; }
+    .side .label { font-size: 11px; color: var(--dim); padding: 0 8px 8px; font-weight: 600; }
+    .row { padding: 8px 8px 9px; border-radius: 8px; }
+    .row.sel { background: var(--blue); color: #fff; }
+    .row .name { font-size: 13px; font-weight: 600; }
+    .row .meta {
+      display: flex; justify-content: space-between; gap: 8px;
+      font-family: "Azeret Mono", ui-monospace, monospace; font-size: 10px; opacity: 0.8; margin-top: 2px;
+    }
+    .term {
+      padding: 16px 18px; font-family: "Azeret Mono", ui-monospace, monospace;
+      font-size: 12px; line-height: 1.7; color: #e8e4d8;
+    }
+    .term .prompt { color: var(--gold); } .term .dim { color: var(--dim); }
+    section { margin-top: 48px; }
+    h2 { font-size: 1.15rem; font-weight: 600; margin: 0 0 14px; }
+    p, li { color: var(--muted); line-height: 1.6; }
+    a { color: var(--blue-ink); }
+    .need { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    .need div {
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+    }
+    .need strong { display: block; color: var(--ink); font-size: 13px; margin-bottom: 4px; }
+    .need span { font-size: 12px; color: var(--muted); }
+    .step {
+      display: grid; grid-template-columns: 42px 1fr; gap: 14px;
+      padding: 18px 0; border-bottom: 1px solid var(--line);
+    }
+    .step:last-child { border-bottom: 0; }
+    .n {
+      width: 42px; height: 42px; border-radius: 12px; background: var(--panel-2);
+      border: 1px solid var(--line); display: grid; place-items: center;
+      font-family: "Azeret Mono", ui-monospace, monospace; color: var(--gold); font-weight: 600;
+    }
+    .step h3 { margin: 0 0 6px; font-size: 1rem; color: var(--ink); }
+    .step p { margin: 0 0 10px; }
+    pre, code { font-family: "Azeret Mono", ui-monospace, monospace; }
+    pre {
+      background: #0b0b0a; border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 14px; overflow-x: auto; color: #f3ecd8; font-size: 12.5px; line-height: 1.55; margin: 0 0 8px;
+    }
+    code { font-size: 0.92em; background: rgba(255,255,255,0.05); padding: 0.1em 0.35em; border-radius: 4px; }
+    pre code { background: none; padding: 0; }
+    .note { border-left: 3px solid var(--gold); padding: 8px 12px; color: var(--muted); font-size: 13px; }
+    .warn { border-left: 3px solid var(--warn); padding: 8px 12px; color: var(--muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    th { color: var(--dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    td:first-child { font-family: "Azeret Mono", ui-monospace, monospace; color: var(--ink); white-space: nowrap; width: 8rem; }
+    details {
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+      padding: 12px 14px; margin: 8px 0;
+    }
+    summary { cursor: pointer; color: var(--ink); font-weight: 500; }
+    details p, details pre { margin-top: 10px; }
+    footer { margin-top: 56px; color: var(--dim); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Open source · MIT · Build it yourself</div>
+    <h1>Put this <em>on your Mac.</em></h1>
+    <p class="lede">
+      Terminal Organizer is a Finder-shaped app: a left list of terminal sessions
+      (folder, git branch, a note for what that session is for) and a real local shell on the right.
+      Free to use. You compile it on your machine — no App Store, no paid Apple developer certificate.
+    </p>
+
+    <div class="window">
+      <div class="chrome">
+        <i class="dot r"></i><i class="dot y"></i><i class="dot g"></i>
+        <span>Terminal Organizer</span>
+      </div>
+      <div class="mock">
+        <div class="side">
+          <div class="label">Sessions</div>
+          <div class="row sel">
+            <div class="name">my-app</div>
+            <div class="meta"><span>feat/search</span><span>fix the filter</span></div>
+          </div>
+          <div class="row">
+            <div class="name">docs-site</div>
+            <div class="meta"><span>main</span><span>ship Friday</span></div>
+          </div>
+        </div>
+        <div class="term">
+          <div class="dim">~/Developer/my-app</div>
+          <div><span class="prompt">%</span> git status</div>
+          <div class="dim">one folder, one job, one note</div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2>What you need</h2>
+      <div class="need">
+        <div><strong>A Mac</strong><span>macOS 14 Sonoma or newer. Apple Silicon or Intel.</span></div>
+        <div><strong>Xcode Command Line Tools</strong><span>Provides <code>swift</code> and <code>git</code>. Xcode 16+ (Swift 6.2).</span></div>
+        <div><strong>GitHub</strong><span>The repo is public. Clone with git or the GitHub CLI.</span></div>
+        <div><strong>About 5 minutes</strong><span>First build downloads SwiftTerm and can take a few minutes.</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Install</h2>
+
+      <div class="step">
+        <div class="n">1</div>
+        <div>
+          <h3>Install Apple’s command-line tools</h3>
+          <p>Open Terminal.app and run this. Click Install in the dialog, then wait until it finishes.</p>
+<pre><code>xcode-select --install</code></pre>
+          <p class="note">Already have Xcode from the App Store? You still need a recent version (16 or later). Check with <code>swift --version</code> — you want Swift 6.2 or newer.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="n">2</div>
+        <div>
+          <h3>Clone the project</h3>
+<pre><code>git clone https://github.com/jvjinfinity/terminal-organizer.git
+cd terminal-organizer</code></pre>
+          <p>Or with the GitHub CLI: <code>gh repo clone jvjinfinity/terminal-organizer</code></p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="n">3</div>
+        <div>
+          <h3>Build and put it in Applications</h3>
+<pre><code>./scripts/install.sh</code></pre>
+          <p>That compiles a Release build, copies <code>/Applications/Terminal Organizer.app</code>, and opens it. The first run fetches the SwiftTerm dependency — give it time.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="n">4</div>
+        <div>
+          <h3>First launch</h3>
+          <p>macOS may warn that the app is from an unidentified developer. That is expected: this project does not pay for an Apple Developer certificate. You built the binary on this Mac.</p>
+          <p class="warn">If it is blocked: Finder → Applications → Terminal Organizer → right-click → Open → Open. Or run <code>xattr -cr "/Applications/Terminal Organizer.app"</code> and try again.</p>
+          <p>If it asks to send notifications, click Allow if you want pings (including from Grok). Optional. Do not set Grok’s notification method to <code>osc777</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Using it</h2>
+      <p>Click <strong>+</strong> (or ⌘N) for a session in the current folder, or ⌘⇧N to pick a folder. Click <em>add a note</em> (or ⌘E) and type what that session is for. Drag a row onto another to reorder.</p>
+      <table>
+        <thead><tr><th>Key</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td>⌘N</td><td>New session in the current folder</td></tr>
+          <tr><td>⌘⇧N</td><td>New session, pick a folder</td></tr>
+          <tr><td>⌘D</td><td>Duplicate session</td></tr>
+          <tr><td>⌘W</td><td>Close session</td></tr>
+          <tr><td>⌘E</td><td>Edit the note</td></tr>
+          <tr><td>⌘R</td><td>Restart that shell</td></tr>
+          <tr><td>⌘⇧R</td><td>Reveal folder in Finder</td></tr>
+          <tr><td>⌘ / ⌘- / ⌘0</td><td>Font size</td></tr>
+          <tr><td>⌘1–9</td><td>Jump to a session</td></tr>
+        </tbody>
+      </table>
+      <p>Sessions (folder + note) live only on <em>your</em> Mac, in <code>~/Library/Application Support/Terminal Organizer/</code>. Live shells do not survive quitting the app; the list comes back on relaunch as new shells in those folders.</p>
+    </section>
+
+    <section>
+      <h2>Update later</h2>
+<pre><code>cd terminal-organizer
+git pull
+./scripts/install.sh</code></pre>
+      <p class="note">Install replaces the running app. Live shells will not resume; folders and notes will.</p>
+    </section>
+
+    <section>
+      <h2>If something fails</h2>
+      <details>
+        <summary><code>xcode-select</code> or <code>swift</code> not found</summary>
+        <p>Run <code>xcode-select --install</code> and wait until it completes. Then open a new Terminal window and try <code>swift --version</code>.</p>
+      </details>
+      <details>
+        <summary>Xcode license</summary>
+        <p>If the build stops on a license prompt:</p>
+<pre><code>sudo xcodebuild -license accept</code></pre>
+      </details>
+      <details>
+        <summary>Build cannot fetch SwiftTerm</summary>
+        <p>You need network access to GitHub. First build downloads <code>migueldeicaza/SwiftTerm</code>. Retry once the network is up.</p>
+      </details>
+      <details>
+        <summary>App will not open / “damaged”</summary>
+        <p>That is Gatekeeper, not a broken download. Right-click the app in Applications and choose Open, or run <code>xattr -cr "/Applications/Terminal Organizer.app"</code>.</p>
+      </details>
+    </section>
+
+    <footer>
+      Source: <a href="https://github.com/jvjinfinity/terminal-organizer">github.com/jvjinfinity/terminal-organizer</a>
+      · MIT License
+      · After clone: <code>open put-this-on-your-mac.html</code>
+    </footer>
+  </div>
+</body>
+</html>
