@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Terminal Organizer</title>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body {
+      display: grid;
+      place-items: center;
+      background: #1a1916;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .shot {
+      width: 1280px;
+      height: 780px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #2b2b2d;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.08),
+        0 40px 80px rgba(0,0,0,0.55);
+      display: grid;
+      grid-template-rows: 52px 1fr;
+    }
+    .titlebar {
+      display: grid;
+      grid-template-columns: 78px 1fr 78px;
+      align-items: center;
+      padding: 0 16px;
+      background: linear-gradient(#3a3a3c, #323234);
+      border-bottom: 1px solid rgba(0,0,0,0.45);
+    }
+    .traffic { display: flex; gap: 8px; }
+    .traffic i {
+      width: 12px; height: 12px; border-radius: 50%; display: block;
+    }
+    .r { background: #ff5f57; } .y { background: #febc2e; } .g { background: #28c840; }
+    .wintitle {
+      text-align: center;
+      color: rgba(255,255,255,0.88);
+      font-size: 13px;
+      font-weight: 590;
+      letter-spacing: -0.01em;
+    }
+    .body {
+      display: grid;
+      grid-template-columns: 248px 1fr;
+      min-height: 0;
+    }
+    .sidebar {
+      background: #1e1e20;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .side-head {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px 0;
+      color: #f5f5f7;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .side-head button {
+      margin-left: auto;
+      border: 0;
+      background: none;
+      color: #8e8e93;
+      font-size: 16px;
+      line-height: 1;
+      width: 22px;
+      height: 22px;
+    }
+    .filter {
+      margin: 8px 12px 8px;
+      background: #3a3a3c;
+      border: 0;
+      border-radius: 6px;
+      color: #8e8e93;
+      font-size: 13px;
+      padding: 5px 8px;
+    }
+    .list { padding: 4px 8px 12px; }
+    .row {
+      border-radius: 6px;
+      padding: 6px 8px 7px;
+      color: #e8e8ed;
+    }
+    .row.sel {
+      background: #0a5fff;
+      color: #fff;
+    }
+    .row-top {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .grip { color: rgba(255,255,255,0.28); font-size: 10px; font-weight: 700; }
+    .row.sel .grip { color: rgba(255,255,255,0.55); }
+    .branch {
+      margin-left: auto;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(235,235,245,0.55);
+    }
+    .row.sel .branch { color: rgba(255,255,255,0.82); }
+    .note {
+      font-size: 11px;
+      font-weight: 400;
+      color: rgba(235,235,245,0.55);
+      padding-left: 16px;
+      margin-top: 1px;
+    }
+    .row.sel .note { color: rgba(255,255,255,0.86); }
+    .row.dim .note { color: rgba(235,235,245,0.32); font-style: normal; }
+    .term {
+      background: rgb(5,5,5);
+      color: rgb(242,245,237);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      padding: 18px 20px;
+      position: relative;
+    }
+    .term .muted { color: #8b8e86; }
+    .term .gold { color: #e6e68c; }
+    .term .green { color: #8fca7a; }
+    .caret {
+      display: inline-block;
+      width: 8px;
+      height: 15px;
+      background: #e6e68c;
+      vertical-align: -2px;
+      margin-left: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shot">
+    <div class="titlebar">
+      <div class="traffic"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+      <div class="wintitle">my-app — tighten the filter</div>
+      <div></div>
+    </div>
+    <div class="body">
+      <aside class="sidebar">
+        <div class="side-head">
+          Sessions
+          <button aria-hidden="true">+</button>
+        </div>
+        <div class="filter">Filter</div>
+        <div class="list">
+          <div class="row sel">
+            <div class="row-top">
+              <span class="grip">≡</span>
+              my-app
+              <span class="branch">feat/search</span>
+            </div>
+            <div class="note">tighten the filter</div>
+          </div>
+          <div class="row">
+            <div class="row-top">
+              <span class="grip">≡</span>
+              website
+              <span class="branch">main</span>
+            </div>
+            <div class="note">Friday launch copy</div>
+          </div>
+          <div class="row dim">
+            <div class="row-top">
+              <span class="grip">≡</span>
+              infra
+              <span class="branch">main</span>
+            </div>
+            <div class="note">add a note</div>
+          </div>
+        </div>
+      </aside>
+      <main class="term">
+        <div class="muted">Last login: Mon Aug 24 09:14:02 on ttys000</div>
+        <div><span class="green">~/Developer/my-app</span> on <span class="gold">feat/search</span></div>
+        <div>% git status</div>
+        <div>On branch feat/search</div>
+        <div>Your branch is up to date with 'origin/feat/search'.</div>
+        <div>&nbsp;</div>
+        <div>nothing to commit, working tree clean</div>
+        <div>% <span class="caret"></span></div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

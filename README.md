@@ -4,6 +4,8 @@ A Finder-style macOS app for people who keep a lot of terminals open.
 
 The left sidebar is a list of sessions. Each row shows the folder, the git branch, and a short note for what that session is for. The right side is a real local shell. Other sessions keep running while you look at one.
 
+![Terminal Organizer: sidebar of named sessions and a real shell on the right](docs/screenshot.png)
+
 Open source. Free. You build it on your Mac — there is no paid Apple Developer signing and no App Store listing.
 
 **Install walkthrough:** clone this repo, then `open put-this-on-your-mac.html`.
