@@ -17,22 +17,27 @@ enum GrokHookInstaller {
         HELPER=\(shellQuote(helper))
         [[ -x "$HELPER" ]] || HELPER="/Applications/Terminal Organizer.app/Contents/MacOS/to-notify"
         [[ -x "$HELPER" ]] || exit 0
-        BODY="${GROK_MESSAGE:-Needs attention}"
-        EVENT="${GROK_HOOK_EVENT:-Notification}"
         CWD="${GROK_WORKSPACE_ROOT:-$PWD}"
+        EVENT="${GROK_HOOK_EVENT:-notification}"
+        case "${TO_KIND:-}" in
+          input) BODY="Needs your input" ;;
+          done) BODY="Done" ;;
+          *) BODY="${GROK_MESSAGE:-Needs attention}" ;;
+        esac
         exec "$HELPER" --cwd "$CWD" --title "Grok" --body "$BODY" --event "$EVENT"
         """
         let jsonBody = """
         {
           "hooks": {
             "Notification": [
-              { "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10 }] }
-            ],
-            "Stop": [
-              { "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10 }] }
-            ],
-            "StopFailure": [
-              { "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10 }] }
+              {
+                "matcher": "permission_prompt",
+                "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10, "env": { "TO_KIND": "input" } }]
+              },
+              {
+                "matcher": "idle_prompt|task_complete",
+                "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10, "env": { "TO_KIND": "done" } }]
+              }
             ]
           }
         }

@@ -52,11 +52,9 @@ final class OrganizerTerminalView: LocalProcessTerminalView {
     }
 
     nonisolated override func bell(source: Terminal) {
+        // BEL is used by tab-complete, pagers, and many CLIs. Do not treat it
+        // as "Grok needs you" — that is the Grok hook / window-title path.
         super.bell(source: source)
-        Task { @MainActor [weak self] in
-            guard let self, let sessionID = self.sessionID else { return }
-            self.store?.sessionAttention(sessionID, title: "Terminal", body: "Needs attention", kind: .bell)
-        }
     }
 
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {

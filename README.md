@@ -59,11 +59,13 @@ Click **add a note** (or the existing note, or **⌘E**) to edit. Drag a row ont
 
 ## Notifications (optional)
 
-If you use [Grok](https://x.ai/cli), the app can ping you when a turn finishes or needs input.
+If you use [Grok](https://x.ai/cli), the app can ping you when Grok needs input or is idle.
 
-- Terminal bell and “action required” titles
-- A hook at `~/.grok/hooks/terminal-organizer.json` (installed on first launch)
+- Grok hooks for `permission_prompt` and `idle_prompt` / `task_complete` (installed on first launch)
+- Window titles that say “action required” / “needs input”
 - Click the Mac notification to jump to that session
+
+Ordinary terminal bells (tab-complete, pagers, and so on) do not send a Mac banner.
 
 Allow notifications when macOS asks. Leave Grok’s `[ui.notifications] method` on `auto` (do not set `osc777`).
 
