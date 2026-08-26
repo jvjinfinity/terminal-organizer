@@ -4,6 +4,14 @@ import Foundation
 import TOSupport
 
 enum ProcessCWD {
+    static func parent(of pid: Int32) -> Int32? {
+        guard pid > 1 else { return nil }
+        var parent: pid_t = 0
+        let result = parent_probe_pid(pid, &parent)
+        guard result == 0, parent > 0, parent != pid else { return nil }
+        return parent
+    }
+
     static func path(for pid: Int32) -> String? {
         guard pid > 0 else { return nil }
         var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))

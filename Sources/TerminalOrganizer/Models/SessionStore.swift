@@ -356,12 +356,55 @@ final class SessionStore {
     }
 
     func applyInboxEvent(_ event: NotifyEvent) {
-        let ids = sessions
-            .filter { ProcessCWD.matchesSession($0.cwd, eventCwd: event.cwd) }
-            .map(\.id)
+        let ids = inboxTargetIDs(for: event)
         for id in ids {
             sessionAttention(id, title: event.title, body: event.body, kind: .osc)
         }
+    }
+
+    private func inboxTargetIDs(for event: NotifyEvent) -> [UUID] {
+        if let pid = event.pid, pid > 1, let id = sessionContaining(process: pid) {
+            return [id]
+        }
+        let exact = sessions.filter { PathMatch.matchesExactly($0.cwd, eventCwd: event.cwd) }
+        guard !exact.isEmpty else { return [] }
+        let home = PathMatch.resolved(FileManager.default.homeDirectoryForCurrentUser.path)
+        let eventPath = PathMatch.resolved(event.cwd)
+        if eventPath == home || eventPath == "/" { return [] }
+        let withGrok = exact.filter { sessionHasGrok($0.id) }
+        if withGrok.count == 1 { return [withGrok[0].id] }
+        if withGrok.isEmpty, exact.count == 1 { return [exact[0].id] }
+        return []
+    }
+
+    private func sessionContaining(process pid: Int32) -> UUID? {
+        var current = pid
+        var seen = Set<Int32>()
+        while current > 1, seen.insert(current).inserted {
+            if let session = sessions.first(where: { terminals.pid(for: $0.id) == current }) {
+                return session.id
+            }
+            guard let parent = ProcessCWD.parent(of: current) else { break }
+            current = parent
+        }
+        return nil
+    }
+
+    private func sessionHasGrok(_ sessionID: UUID) -> Bool {
+        guard let pid = terminals.pid(for: sessionID) else { return false }
+        let proc = Process()
+        let out = Pipe()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        proc.arguments = ["-P", String(pid), "-f", "grok"]
+        proc.standardOutput = out
+        proc.standardError = Pipe()
+        do {
+            try proc.run()
+            proc.waitUntilExit()
+        } catch {
+            return false
+        }
+        return proc.terminationStatus == 0
     }
 
     func reorder(dragging id: UUID, onto target: UUID) {

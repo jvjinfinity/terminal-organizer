@@ -17,4 +17,11 @@ public enum PathMatch {
         if session == event { return true }
         return session.hasPrefix(event + "/")
     }
+
+    public static func matchesExactly(_ sessionCwd: String, eventCwd: String) -> Bool {
+        let session = resolved(sessionCwd)
+        let event = resolved(eventCwd)
+        guard !session.isEmpty, !event.isEmpty else { return false }
+        return session == event
+    }
 }

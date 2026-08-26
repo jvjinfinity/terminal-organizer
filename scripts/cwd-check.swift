@@ -11,6 +11,8 @@ enum CWDCheck {
         precondition(PathMatch.matchesSession("/Users/foo/proj/src", eventCwd: "/Users/foo/proj"))
         precondition(!PathMatch.matchesSession("/Users/foo/other", eventCwd: "/Users/foo/proj"))
         precondition(!PathMatch.matchesSession("/Users/foo/proj", eventCwd: ""))
+        precondition(PathMatch.matchesExactly("/Users/foo/proj", eventCwd: "/Users/foo/proj"))
+        precondition(!PathMatch.matchesExactly("/Users/foo/proj/src", eventCwd: "/Users/foo/proj"))
         print("cwd match ok \(a)")
     }
 }

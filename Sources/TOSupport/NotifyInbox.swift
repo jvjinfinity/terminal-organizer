@@ -5,12 +5,14 @@ public struct NotifyEvent: Codable, Sendable {
     public var title: String
     public var body: String
     public var event: String
+    public var pid: Int32?
 
-    public init(cwd: String, title: String, body: String, event: String) {
+    public init(cwd: String, title: String, body: String, event: String, pid: Int32? = nil) {
         self.cwd = cwd
         self.title = title
         self.body = body
         self.event = event
+        self.pid = pid
     }
 }
 
@@ -61,11 +63,13 @@ public enum NotifyCLI {
             guard let i = args.firstIndex(of: name), i + 1 < args.count else { return "" }
             return args[i + 1]
         }
+        let pidValue = Int32(value("--pid"))
         let event = NotifyEvent(
             cwd: value("--cwd"),
             title: value("--title").isEmpty ? "Grok" : value("--title"),
             body: value("--body").isEmpty ? "Needs attention" : value("--body"),
-            event: value("--event")
+            event: value("--event"),
+            pid: (pidValue ?? 0) > 1 ? pidValue : nil
         )
         try? NotifyInbox.write(event)
     }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.8 — 2026-08-26
+
+Fix: idle Groks all lighting up **Done** at once.
+
+- Dropped Grok `idle_prompt` / `task_complete` (those mean “has been sitting there,” not “just finished”).
+- **Done** now comes from an observe-only `Stop` when `reason` is `end_turn` (not a subagent, not a stop-hook continuation, not session teardown).
+- **Needs your input** is still `permission_prompt`.
+- The ping is attached to the Grok process (`--pid`) so one event cannot mark every session under `~/Developer`, or every duplicate row of the same folder.
+
+Update: `git pull && ./scripts/install.sh`, then **quit and start Grok again** in each session so it loads the hook.
+
 ## 1.3.7 — 2026-08-24
 
 Notifications only fire when Grok **needs your input** or **is idle**.

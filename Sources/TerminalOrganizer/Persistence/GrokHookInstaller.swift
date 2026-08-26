@@ -8,23 +8,66 @@ enum GrokHookInstaller {
         try? FileManager.default.createDirectory(at: hooks, withIntermediateDirectories: true)
 
         let script = hooks.appendingPathComponent("terminal-organizer-notify.sh")
+        let python = hooks.appendingPathComponent("terminal-organizer-notify.py")
         let json = hooks.appendingPathComponent("terminal-organizer.json")
         let helper = helperPath()
+
+        let pythonBody = """
+        #!/usr/bin/env python3
+        import json
+        import os
+        import sys
+
+        helper = \(pyString(helper))
+        if not os.access(helper, os.X_OK):
+            helper = "/Applications/Terminal Organizer.app/Contents/MacOS/to-notify"
+        if not os.access(helper, os.X_OK):
+            sys.exit(0)
+
+        kind = os.environ.get("TO_KIND", "")
+        event = os.environ.get("GROK_HOOK_EVENT", "").lower()
+        raw = sys.stdin.read()
+        try:
+            data = json.loads(raw) if raw.strip() else {}
+        except json.JSONDecodeError:
+            data = {}
+        cwd = (
+            data.get("workspaceRoot")
+            or data.get("cwd")
+            or os.environ.get("GROK_WORKSPACE_ROOT")
+            or os.getcwd()
+        )
+        body = None
+        hook_event = event or "notification"
+        if kind == "input":
+            body = "Needs your input"
+            hook_event = "notification"
+        elif event == "stop":
+            reason = str(data.get("reason") or "")
+            sub = data.get("subagentType") or ""
+            active = data.get("stopHookActive")
+            if reason != "end_turn":
+                sys.exit(0)
+            if sub:
+                sys.exit(0)
+            if active is True or str(active).lower() in ("true", "1"):
+                sys.exit(0)
+            body = "Done"
+            hook_event = "stop"
+        else:
+            sys.exit(0)
+
+        args = [helper, "--cwd", str(cwd), "--title", "Grok", "--body", body, "--event", hook_event]
+        pid = os.getppid()
+        if pid > 1:
+            args.extend(["--pid", str(pid)])
+        os.execv(helper, args)
+        """
 
         let scriptBody = """
         #!/bin/zsh
         set -euo pipefail
-        HELPER=\(shellQuote(helper))
-        [[ -x "$HELPER" ]] || HELPER="/Applications/Terminal Organizer.app/Contents/MacOS/to-notify"
-        [[ -x "$HELPER" ]] || exit 0
-        CWD="${GROK_WORKSPACE_ROOT:-$PWD}"
-        EVENT="${GROK_HOOK_EVENT:-notification}"
-        case "${TO_KIND:-}" in
-          input) BODY="Needs your input" ;;
-          done) BODY="Done" ;;
-          *) BODY="${GROK_MESSAGE:-Needs attention}" ;;
-        esac
-        exec "$HELPER" --cwd "$CWD" --title "Grok" --body "$BODY" --event "$EVENT"
+        exec python3 \(shellQuote(python.path))
         """
         let jsonBody = """
         {
@@ -33,26 +76,26 @@ enum GrokHookInstaller {
               {
                 "matcher": "permission_prompt",
                 "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10, "env": { "TO_KIND": "input" } }]
-              },
-              {
-                "matcher": "idle_prompt|task_complete",
-                "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10, "env": { "TO_KIND": "done" } }]
               }
+            ],
+            "Stop": [
+              { "hooks": [{ "type": "command", "command": "\(script.path)", "timeout": 10 }] }
             ]
           }
         }
         """
 
-        let scriptData = Data(scriptBody.utf8)
-        let jsonData = Data(jsonBody.utf8)
-        let existingScript = try? Data(contentsOf: script)
-        let existingJSON = try? Data(contentsOf: json)
-        if existingScript != scriptData {
-            try? scriptData.write(to: script, options: .atomic)
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
-        }
-        if existingJSON != jsonData {
-            try? jsonData.write(to: json, options: .atomic)
+        writeIfNeeded(python, pythonBody, permissions: 0o755)
+        writeIfNeeded(script, scriptBody, permissions: 0o755)
+        writeIfNeeded(json, jsonBody, permissions: 0o644)
+    }
+
+    private static func writeIfNeeded(_ url: URL, _ text: String, permissions: Int) {
+        let data = Data(text.utf8)
+        let existing = try? Data(contentsOf: url)
+        if existing != data {
+            try? data.write(to: url, options: .atomic)
+            try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: url.path)
         }
     }
 
@@ -65,5 +108,12 @@ enum GrokHookInstaller {
 
     private static func shellQuote(_ path: String) -> String {
         "'\(path.replacingOccurrences(of: "'", with: "'\\''"))'"
+    }
+
+    private static func pyString(_ path: String) -> String {
+        let escaped = path
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return "\"\(escaped)\""
     }
 }

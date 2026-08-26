@@ -10,7 +10,7 @@ Open source. Free. You build it on your Mac — there is no paid Apple Developer
 
 **Install walkthrough:** clone this repo, then `open put-this-on-your-mac.html`.
 
-Current release: **[1.3.7](https://github.com/jvjinfinity/terminal-organizer/releases/tag/v1.3.7)** · [Changelog](CHANGELOG.md)
+Current release: **[1.3.8](https://github.com/jvjinfinity/terminal-organizer/releases/tag/v1.3.8)** · [Changelog](CHANGELOG.md)
 
 ## Requirements
 
@@ -61,13 +61,13 @@ Click **add a note** (or the existing note, or **⌘E**) to edit. Drag a row ont
 
 ## Notifications (optional)
 
-If you use [Grok](https://x.ai/cli), the app can ping you when Grok needs input or is idle.
+If you use [Grok](https://x.ai/cli), the app can ping you when Grok **needs input** or **just finished a turn**.
 
-- Grok hooks for `permission_prompt` and `idle_prompt` / `task_complete` (installed on first launch)
+- Grok hooks: `permission_prompt`, and `Stop` only when the turn actually ended (`end_turn`)
 - Window titles that say “action required” / “needs input”
 - Click the Mac notification to jump to that session
 
-Ordinary terminal bells (tab-complete, pagers, and so on) do not send a Mac banner.
+Ordinary terminal bells and Grok’s idle timer do not send a Mac banner.
 
 Allow notifications when macOS asks. Leave Grok’s `[ui.notifications] method` on `auto` (do not set `osc777`).
 
