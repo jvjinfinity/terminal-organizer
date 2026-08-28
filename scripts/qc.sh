@@ -37,10 +37,22 @@ git -C "$GIT_TMP" init -q -b feat-qc
 swiftc -o /tmp/git-check \
   "$ROOT/Sources/TerminalOrganizer/Terminal/GitStatus.swift" \
   "$ROOT/scripts/git-check.swift"
-BRANCH="$(/tmp/git-check "$GIT_TMP")"
-[[ "$BRANCH" == "feat-qc" ]] || fail "GitStatus expected feat-qc, got '$BRANCH'"
+GIT_OUT="$(/tmp/git-check "$GIT_TMP")"
+echo "$GIT_OUT"
+echo "$GIT_OUT" | grep -qx "branch feat-qc" || fail "GitStatus expected branch feat-qc, got '$GIT_OUT'"
+echo "$GIT_OUT" | grep -qx "worktree NONE" || fail "main checkout should not be a worktree"
 pass "GitStatus branch feat-qc"
-rm -rf "$GIT_TMP"
+
+WT_TMP="$(mktemp -d /tmp/to-wt-XXXX)"
+git -C "$GIT_TMP" worktree add -q -b wt-qc "$WT_TMP"
+WT_OUT="$(/tmp/git-check "$WT_TMP")"
+echo "$WT_OUT"
+echo "$WT_OUT" | grep -qx "branch wt-qc" || fail "worktree branch expected wt-qc, got '$WT_OUT'"
+echo "$WT_OUT" | grep -qx "worktree $(basename "$WT_TMP")" || fail "worktree name expected $(basename "$WT_TMP")"
+echo "$WT_OUT" | grep -qx "repo $(basename "$GIT_TMP")" || fail "worktree repo expected $(basename "$GIT_TMP")"
+pass "GitStatus worktree $(basename "$WT_TMP")"
+git -C "$GIT_TMP" worktree remove --force "$WT_TMP" >/dev/null 2>&1 || rm -rf "$WT_TMP"
+rm -rf "$GIT_TMP" "$WT_TMP"
 
 echo "== XTVERSION sanitizer =="
 swiftc -o /tmp/xtversion-check \

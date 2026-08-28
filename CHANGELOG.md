@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.9 — 2026-08-27
+
+Sidebar shows git **worktrees** at a glance.
+
+- Linked worktrees keep the **project** name as the row title.
+- A green tree icon and the worktree name sit under the title (`wt` is the icon, not extra text).
+- Branch stays on the right, as before.
+- Filter matches repo name and worktree name.
+
 ## 1.3.8 — 2026-08-26
 
 Fix: idle Groks all lighting up **Done** at once.

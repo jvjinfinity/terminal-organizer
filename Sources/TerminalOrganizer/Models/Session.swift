@@ -26,6 +26,8 @@ struct Session: Identifiable, Hashable, Codable, Sendable {
 
 struct SessionLiveState: Equatable, Sendable {
     var branch: String?
+    var repoName: String?
+    var worktreeName: String?
     var missingFolder: Bool = false
     var processExited: Bool = false
     var restartToken: Int = 0

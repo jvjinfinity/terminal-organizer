@@ -23,7 +23,7 @@ struct SessionRowView: View {
                         .fill(Color.orange)
                         .frame(width: 7, height: 7)
                 }
-                Text(session.folderName)
+                Text(state.worktreeName == nil ? session.folderName : (state.repoName ?? session.folderName))
                     .font(.system(.subheadline, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -35,6 +35,18 @@ struct SessionRowView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
+            }
+
+            if let worktree = state.worktreeName {
+                HStack(spacing: 4) {
+                    Image(systemName: "tree.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(worktree)
+                        .font(.system(.caption2, design: .default, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .foregroundStyle(Color(red: 0.42, green: 0.82, blue: 0.50))
             }
 
             if isEditing {

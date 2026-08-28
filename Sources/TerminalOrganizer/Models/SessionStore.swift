@@ -26,6 +26,8 @@ final class SessionStore {
             if session.cwd.lowercased().contains(needle) { return true }
             if session.note.lowercased().contains(needle) { return true }
             if let branch = live[session.id]?.branch, branch.lowercased().contains(needle) { return true }
+            if let repo = live[session.id]?.repoName, repo.lowercased().contains(needle) { return true }
+            if let worktree = live[session.id]?.worktreeName, worktree.lowercased().contains(needle) { return true }
             return false
         }
     }
@@ -106,10 +108,8 @@ final class SessionStore {
         lastFolder = path
         let session = Session(cwd: path, note: note)
         sessions.append(session)
-        live[session.id] = SessionLiveState(
-            branch: GitStatus.branch(in: path),
-            missingFolder: !session.folderExists
-        )
+        live[session.id] = SessionLiveState(missingFolder: !session.folderExists)
+        refreshLiveState(for: session.id)
         selectedID = session.id
         persistSoon()
     }
@@ -176,8 +176,8 @@ final class SessionStore {
         var state = live[session.id] ?? SessionLiveState()
         state.processExited = false
         state.missingFolder = !FileManager.default.fileExists(atPath: folder.path)
-        state.branch = GitStatus.branch(in: folder.path)
         live[session.id] = state
+        refreshLiveState(for: session.id)
         lastFolder = folder.path
         if let current = sessions.first(where: { $0.id == session.id }), current.folderExists {
             let view = terminals.view(for: current, store: self)
@@ -229,10 +229,8 @@ final class SessionStore {
         } else {
             sessions.append(copy)
         }
-        live[copy.id] = SessionLiveState(
-            branch: GitStatus.branch(in: copy.cwd),
-            missingFolder: !copy.folderExists
-        )
+        live[copy.id] = SessionLiveState(missingFolder: !copy.folderExists)
+        refreshLiveState(for: copy.id)
         selectedID = copy.id
         persistSoon()
         let view = terminals.view(for: copy, store: self)
@@ -470,7 +468,10 @@ final class SessionStore {
         guard let session = sessions.first(where: { $0.id == sessionID }) else { return }
         var state = live[sessionID] ?? SessionLiveState()
         state.missingFolder = !session.folderExists
-        state.branch = session.folderExists ? GitStatus.branch(in: session.cwd) : nil
+        let git = session.folderExists ? GitStatus.info(in: session.cwd) : GitStatus.Info()
+        state.branch = git.branch
+        state.repoName = git.repoName
+        state.worktreeName = git.worktreeName
         guard live[sessionID] != state else { return }
         live[sessionID] = state
     }
