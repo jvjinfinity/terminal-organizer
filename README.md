@@ -10,7 +10,7 @@ Open source. Free. You build it on your Mac — there is no paid Apple Developer
 
 **Install walkthrough:** clone this repo, then `open put-this-on-your-mac.html`.
 
-Current release: **[1.3.10](https://github.com/jvjinfinity/terminal-organizer/releases/tag/v1.3.10)** · [Changelog](CHANGELOG.md)
+Current release: **[1.3.11](https://github.com/jvjinfinity/terminal-organizer/releases/tag/v1.3.11)** · [Changelog](CHANGELOG.md)
 
 ## Requirements
 

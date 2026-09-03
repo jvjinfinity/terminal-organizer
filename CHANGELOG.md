@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.11 — 2026-09-03
+
+Sidebar footer shows this Mac’s version (`1.3.11`) in the bottom left, so you can tell whether you have the latest build.
+
 ## 1.3.10 — 2026-09-02
 
 When Grok makes a nested worktree but the shell stays in the main folder, that session’s row shows the tree and the worktree branch.

@@ -91,6 +91,17 @@ struct SidebarView: View {
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
             }
+
+            Divider()
+            HStack {
+                Text(AppVersion.display)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .help("This Mac’s Terminal Organizer build. Latest public release is on GitHub.")
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
         }
         .background(.background)
     }

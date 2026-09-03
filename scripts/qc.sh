@@ -125,6 +125,13 @@ git -C "$GIT_TMP" worktree remove --force "$NEST_A" >/dev/null 2>&1 || true
 git -C "$GIT_TMP" worktree remove --force "$NEST_B" >/dev/null 2>&1 || true
 rm -rf "$GIT_TMP" "$WT_TMP" "$SESS" "$OTHER"
 
+echo "== AppVersion =="
+swiftc -o /tmp/version-check \
+  "$ROOT/Sources/TerminalOrganizer/Models/AppVersion.swift" \
+  "$ROOT/scripts/version-check.swift"
+/tmp/version-check || fail "AppVersion"
+pass "AppVersion display 1.3 + 11 → 1.3.11"
+
 echo "== XTVERSION sanitizer =="
 swiftc -o /tmp/xtversion-check \
   "$ROOT/Sources/TOSupport/QueryReplySanitizer.swift" \
