@@ -2,7 +2,7 @@
 
 A Finder-style macOS app for people who keep a lot of terminals open.
 
-The left sidebar is a list of sessions. Each row shows the folder, the git branch, and a short note for what that session is for. Linked git worktrees keep the project name and show a green tree plus the worktree name. The right side is a real local shell. Other sessions keep running while you look at one.
+The left sidebar is a list of sessions. Each row shows the folder, the git branch, and a short note for what that session is for. Linked git worktrees keep the project name and show a green tree plus the worktree name — including when Grok creates a nested worktree but leaves the shell in the main folder. The right side is a real local shell. Other sessions keep running while you look at one.
 
 ![Terminal Organizer: sidebar of named sessions and a real shell on the right](docs/screenshot.png)
 
@@ -10,7 +10,7 @@ Open source. Free. You build it on your Mac — there is no paid Apple Developer
 
 **Install walkthrough:** clone this repo, then `open put-this-on-your-mac.html`.
 
-Current release: **[1.3.9](https://github.com/jvjinfinity/terminal-organizer/releases/tag/v1.3.9)** · [Changelog](CHANGELOG.md)
+Current release: **[1.3.10](https://github.com/jvjinfinity/terminal-organizer/releases/tag/v1.3.10)** · [Changelog](CHANGELOG.md)
 
 ## Requirements
 

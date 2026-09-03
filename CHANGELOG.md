@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.10 — 2026-09-02
+
+When Grok makes a nested worktree but the shell stays in the main folder, that session’s row shows the tree and the worktree branch.
+
+- Each Grok is matched to its own desk (two sessions in the same project no longer both say `main`).
+- If we cannot prove which worktree this Grok is using, the row stays as the shell: no guessing.
+- Linked worktrees you `cd` into still use the 1.3.9 detector.
+
 ## 1.3.9 — 2026-08-27
 
 Sidebar shows git **worktrees** at a glance.

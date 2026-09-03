@@ -469,9 +469,18 @@ final class SessionStore {
         var state = live[sessionID] ?? SessionLiveState()
         state.missingFolder = !session.folderExists
         let git = session.folderExists ? GitStatus.info(in: session.cwd) : GitStatus.Info()
-        state.branch = git.branch
-        state.repoName = git.repoName
-        state.worktreeName = git.worktreeName
+        if git.worktreeName == nil,
+           session.folderExists,
+           let pid = terminals.pid(for: sessionID),
+           let overlay = GrokWorktreeOverlay.info(shellPid: pid, sessionCwd: session.cwd) {
+            state.branch = overlay.branch
+            state.repoName = overlay.repoName ?? git.repoName
+            state.worktreeName = overlay.worktreeName
+        } else {
+            state.branch = git.branch
+            state.repoName = git.repoName
+            state.worktreeName = git.worktreeName
+        }
         guard live[sessionID] != state else { return }
         live[sessionID] = state
     }

@@ -5,6 +5,7 @@ enum GitStatus {
         var branch: String? = nil
         var repoName: String? = nil
         var worktreeName: String? = nil
+        var checkoutPath: String? = nil
     }
 
     static func branch(in directory: String) -> String? {
@@ -16,12 +17,20 @@ enum GitStatus {
         return Info(
             branch: branch(fromGitDir: located.gitDir),
             repoName: located.repoName,
-            worktreeName: located.worktreeName
+            worktreeName: located.worktreeName,
+            checkoutPath: located.checkout.path
         )
+    }
+
+    /// True when both paths resolve into the same Git repository (main checkout or a linked worktree).
+    static func sharesRepository(_ a: String, _ b: String) -> Bool {
+        guard let la = locate(in: a), let lb = locate(in: b) else { return false }
+        return commonGitDir(la.gitDir) == commonGitDir(lb.gitDir)
     }
 
     private struct Location {
         var gitDir: URL
+        var checkout: URL
         var repoName: String?
         var worktreeName: String?
     }
@@ -52,7 +61,7 @@ enum GitStatus {
             var isDir: ObjCBool = false
             if fm.fileExists(atPath: gitURL.path, isDirectory: &isDir) {
                 if isDir.boolValue {
-                    return Location(gitDir: gitURL, repoName: dir.lastPathComponent, worktreeName: nil)
+                    return Location(gitDir: gitURL, checkout: dir, repoName: dir.lastPathComponent, worktreeName: nil)
                 }
                 if let gitDir = parseGitFile(gitURL, relativeTo: dir) {
                     return decorate(gitDir: gitDir, checkout: dir)
@@ -92,13 +101,22 @@ enum GitStatus {
             let worktreeName = gitDir.lastPathComponent
             return Location(
                 gitDir: gitDir,
+                checkout: checkout,
                 repoName: repoName.isEmpty ? checkout.lastPathComponent : repoName,
                 worktreeName: worktreeName.isEmpty ? nil : worktreeName
             )
         }
         if path.contains("/.git/modules/") {
-            return Location(gitDir: gitDir, repoName: checkout.lastPathComponent, worktreeName: nil)
+            return Location(gitDir: gitDir, checkout: checkout, repoName: checkout.lastPathComponent, worktreeName: nil)
         }
-        return Location(gitDir: gitDir, repoName: checkout.lastPathComponent, worktreeName: nil)
+        return Location(gitDir: gitDir, checkout: checkout, repoName: checkout.lastPathComponent, worktreeName: nil)
+    }
+
+    private static func commonGitDir(_ gitDir: URL) -> String {
+        let path = gitDir.path
+        if let range = path.range(of: "/.git/worktrees/") {
+            return String(path[..<range.lowerBound]) + "/.git"
+        }
+        return path
     }
 }
