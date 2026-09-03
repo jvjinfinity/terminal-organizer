@@ -8,122 +8,8 @@ enum GrokWorktreeOverlay {
         var at: Date
     }
 
-    private struct Entry {
-        var grokPid: Int32
-        var sessionDir: URL?
-        var overlayPath: String?
-        var lastEvidenceScan: Date
-        var lsofAttempted: Bool
-    }
-
-    private final class Box: @unchecked Sendable {
-        let lock = NSLock()
-        var entries: [Int32: Entry] = [:]
-        var lsofWindow = Date.distantPast
-        var lsofUsed = 0
-    }
-
-    private static let box = Box()
     private static let isoFractional = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
     private static let isoBasic = Date.ISO8601FormatStyle()
-
-    /// `nil` unless this shell's Grok is proven to be using a linked worktree of `sessionCwd`.
-    static func info(shellPid: Int32, sessionCwd: String) -> GitStatus.Info? {
-        if GitStatus.info(in: sessionCwd).worktreeName != nil { return nil }
-        guard let grokPid = grokPID(fromShell: shellPid) else {
-            box.lock.lock()
-            box.entries.removeValue(forKey: shellPid)
-            box.lock.unlock()
-            return nil
-        }
-
-        box.lock.lock()
-        var entry = box.entries[shellPid] ?? Entry(
-            grokPid: grokPid,
-            sessionDir: nil,
-            overlayPath: nil,
-            lastEvidenceScan: .distantPast,
-            lsofAttempted: false
-        )
-        if entry.grokPid != grokPid {
-            entry = Entry(
-                grokPid: grokPid,
-                sessionDir: nil,
-                overlayPath: nil,
-                lastEvidenceScan: .distantPast,
-                lsofAttempted: false
-            )
-        }
-        box.lock.unlock()
-
-        if entry.sessionDir == nil, allowLsof() {
-            entry.lsofAttempted = true
-            entry.sessionDir = sessionDirectory(forGrok: grokPid)
-        }
-
-        let now = Date()
-        if let dir = entry.sessionDir, shouldScan(entry, dir: dir, now: now) {
-            entry.lastEvidenceScan = now
-            if let found = worktree(fromSessionDir: dir, sessionCwd: sessionCwd),
-               let path = found.checkoutPath {
-                entry.overlayPath = path
-            }
-        }
-
-        var result: GitStatus.Info?
-        if let path = entry.overlayPath {
-            let info = GitStatus.info(in: path)
-            if info.worktreeName != nil, GitStatus.sharesRepository(path, sessionCwd) {
-                result = info
-            } else {
-                entry.overlayPath = nil
-            }
-        }
-
-        box.lock.lock()
-        box.entries[shellPid] = entry
-        box.lock.unlock()
-        return result
-    }
-
-    private static func allowLsof() -> Bool {
-        box.lock.lock()
-        defer { box.lock.unlock() }
-        let now = Date()
-        if now.timeIntervalSince(box.lsofWindow) > 0.7 {
-            box.lsofWindow = now
-            box.lsofUsed = 0
-        }
-        guard box.lsofUsed < 1 else { return false }
-        box.lsofUsed += 1
-        return true
-    }
-
-    private static func shouldScan(_ entry: Entry, dir: URL, now: Date) -> Bool {
-        let interval: TimeInterval = entry.overlayPath == nil ? 8 : 3
-        if now.timeIntervalSince(entry.lastEvidenceScan) >= interval { return true }
-        return newestEvidenceDate(dir) > entry.lastEvidenceScan
-    }
-
-    private static func newestEvidenceDate(_ dir: URL) -> Date {
-        var latest = Date.distantPast
-        let hunks = dir.appendingPathComponent("hunk_records.jsonl")
-        if let date = try? hunks.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
-            latest = max(latest, date)
-        }
-        let term = dir.appendingPathComponent("terminal", isDirectory: true)
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: term,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: [.skipsHiddenFiles]
-        ) else { return latest }
-        for file in files where file.pathExtension == "log" {
-            if let date = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
-                latest = max(latest, date)
-            }
-        }
-        return latest
-    }
 
     static func worktree(fromSessionDir dir: URL, sessionCwd: String) -> GitStatus.Info? {
         var hits: [Hit] = []
@@ -273,36 +159,6 @@ enum GrokWorktreeOverlay {
         return name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" || $0 == "." }
     }
 
-    private static func grokPID(fromShell pid: Int32) -> Int32? {
-        if comm(pid) == "grok" { return pid }
-        return childPIDs(of: pid, named: "grok").first
-    }
-
-    private static func sessionDirectory(forGrok pid: Int32) -> URL? {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-        proc.arguments = ["-a", "-p", String(pid), "-Fn"]
-        let out = Pipe()
-        proc.standardOutput = out
-        proc.standardError = Pipe()
-        do {
-            try proc.run()
-            proc.waitUntilExit()
-        } catch {
-            return nil
-        }
-        let text = String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        var found: [String] = []
-        for line in text.split(separator: "\n") {
-            guard line.first == "n" else { continue }
-            if let dir = grokSessionDirectory(fromOpenPath: String(line.dropFirst())) {
-                found.append(dir.path)
-            }
-        }
-        guard let path = found.first else { return nil }
-        return URL(fileURLWithPath: path, isDirectory: true)
-    }
-
     static func grokSessionDirectory(fromOpenPath path: String) -> URL? {
         guard let range = path.range(of: "/.grok/sessions/") else { return nil }
         let rest = path[range.upperBound...]
@@ -316,41 +172,6 @@ enum GrokWorktreeOverlay {
         let pieces = value.split(separator: "-")
         guard pieces.count == 5 else { return false }
         return value.allSatisfy { $0.isHexDigit || $0 == "-" }
-    }
-
-    private static func comm(_ pid: Int32) -> String? {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/bin/ps")
-        proc.arguments = ["-p", String(pid), "-o", "comm="]
-        let out = Pipe()
-        proc.standardOutput = out
-        proc.standardError = Pipe()
-        do {
-            try proc.run()
-            proc.waitUntilExit()
-        } catch {
-            return nil
-        }
-        let raw = String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? nil : name
-    }
-
-    private static func childPIDs(of pid: Int32, named name: String) -> [Int32] {
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        proc.arguments = ["-P", String(pid), name]
-        let out = Pipe()
-        proc.standardOutput = out
-        proc.standardError = Pipe()
-        do {
-            try proc.run()
-            proc.waitUntilExit()
-        } catch {
-            return []
-        }
-        let text = String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-        return text.split(whereSeparator: \.isNewline).compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
     }
 
     private static func tail(_ url: URL, maxBytes: Int) -> String {

@@ -43,6 +43,11 @@ final class SessionStore {
     private var saveTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var inboxTask: Task<Void, Never>?
+    private var overlayTask: Task<Void, Never>?
+    private var grokOverlay: [UUID: GitStatus.Info] = [:]
+    private var grokSessionDir: [UUID: URL] = [:]
+    private var grokEvidenceAt: [UUID: Date] = [:]
+    private var grokPidBySession: [UUID: Int32] = [:]
     private var lastFolder: String
     private var lastDark: Bool?
     private var lastClose: ContinuousClock.Instant?
@@ -74,6 +79,7 @@ final class SessionStore {
         }
         refreshLiveState()
         startPolling()
+        startOverlayScanner()
         startInboxWatcher()
         GrokHookInstaller.installIfNeeded()
     }
@@ -453,6 +459,7 @@ final class SessionStore {
         saveWindowFrame()
         persistNow()
         pollTask?.cancel()
+        overlayTask?.cancel()
         inboxTask?.cancel()
         terminals.terminateAll()
         AppNotifications.setBadge(0)
@@ -469,10 +476,7 @@ final class SessionStore {
         var state = live[sessionID] ?? SessionLiveState()
         state.missingFolder = !session.folderExists
         let git = session.folderExists ? GitStatus.info(in: session.cwd) : GitStatus.Info()
-        if git.worktreeName == nil,
-           session.folderExists,
-           let pid = terminals.pid(for: sessionID),
-           let overlay = GrokWorktreeOverlay.info(shellPid: pid, sessionCwd: session.cwd) {
+        if git.worktreeName == nil, let overlay = grokOverlay[sessionID], overlay.worktreeName != nil {
             state.branch = overlay.branch
             state.repoName = overlay.repoName ?? git.repoName
             state.worktreeName = overlay.worktreeName
@@ -492,6 +496,87 @@ final class SessionStore {
                 self?.pollWorkingDirectories()
             }
         }
+    }
+
+    private func startOverlayScanner() {
+        overlayTask = Task { [weak self] in
+            await self?.scanGrokOverlays()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2.5))
+                await self?.scanGrokOverlays()
+            }
+        }
+    }
+
+    private func scanGrokOverlays() async {
+        struct Job: Sendable {
+            var id: UUID
+            var shellPid: Int32
+            var cwd: String
+            var sessionDir: URL?
+            var checkoutPath: String?
+            var priorGrok: Int32?
+            var rescan: Bool
+        }
+        let now = Date()
+        let jobs: [Job] = sessions.compactMap { session in
+            guard session.folderExists, let pid = terminals.pid(for: session.id) else { return nil }
+            let last = grokEvidenceAt[session.id] ?? .distantPast
+            let rescan = grokOverlay[session.id] == nil || now.timeIntervalSince(last) >= 10
+            return Job(
+                id: session.id,
+                shellPid: pid,
+                cwd: session.cwd,
+                sessionDir: grokSessionDir[session.id],
+                checkoutPath: grokOverlay[session.id]?.checkoutPath,
+                priorGrok: grokPidBySession[session.id],
+                rescan: rescan
+            )
+        }
+        let found = await Task.detached(priority: .utility) {
+            var result: [UUID: GitStatus.Info] = [:]
+            var dirs: [UUID: URL] = [:]
+            var pids: [UUID: Int32] = [:]
+            var scanned: [UUID: Date] = [:]
+            let scannedAt = Date()
+            for job in jobs {
+                if Task.isCancelled { break }
+                if GitStatus.info(in: job.cwd).worktreeName != nil { continue }
+                guard let grok = ProcessCWD.grokChild(of: job.shellPid) else { continue }
+                pids[job.id] = grok
+                var dir = job.priorGrok == grok ? job.sessionDir : nil
+                if dir == nil {
+                    if let path = ProcessCWD.grokSessionOpenPath(of: grok) {
+                        dir = GrokWorktreeOverlay.grokSessionDirectory(fromOpenPath: path)
+                    }
+                }
+                if let dir {
+                    dirs[job.id] = dir
+                }
+                if !job.rescan, let path = job.checkoutPath {
+                    let info = GitStatus.info(in: path)
+                    if info.worktreeName != nil, GitStatus.sharesRepository(path, job.cwd) {
+                        result[job.id] = info
+                        continue
+                    }
+                }
+                guard let dir else { continue }
+                scanned[job.id] = scannedAt
+                if let info = GrokWorktreeOverlay.worktree(fromSessionDir: dir, sessionCwd: job.cwd) {
+                    result[job.id] = info
+                }
+            }
+            return (result, dirs, scanned, pids)
+        }.value
+        grokOverlay = found.0
+        let liveIDs = Set(jobs.map(\.id))
+        grokSessionDir = found.1
+        grokPidBySession = found.3
+        for (id, at) in found.2 {
+            grokEvidenceAt[id] = at
+        }
+        grokEvidenceAt = grokEvidenceAt.filter { liveIDs.contains($0.key) }
+        refreshLiveState()
     }
 
     private func startInboxWatcher() {

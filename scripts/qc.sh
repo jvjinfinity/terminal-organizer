@@ -15,21 +15,75 @@ swift build -c debug --product TerminalOrganizer
 echo "== CWDProbe =="
 cat > /tmp/cwdprobe-main.c <<'EOF'
 #include "CWDProbe.h"
+#include <signal.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 int main(void) {
     char buf[1024];
+    char name[64];
+    pid_t kids[16];
+    int n = 0;
     if (cwd_probe_pid(getpid(), buf, sizeof(buf)) != 0) return 1;
+    if (buf[0] != '/') return 2;
     printf("%s\n", buf);
+    if (name_probe_pid(getpid(), name, sizeof(name)) != 0) return 3;
+    if (name[0] == '\0') return 4;
+    pid_t child = fork();
+    if (child < 0) return 5;
+    if (child == 0) {
+        sleep(3);
+        _exit(0);
+    }
+    if (child_probe_pids(getpid(), kids, 16, &n) != 0) {
+        kill(child, SIGKILL);
+        waitpid(child, NULL, 0);
+        return 6;
+    }
+    int found = 0;
+    for (int i = 0; i < n; i++) {
+        if (kids[i] == child) found = 1;
+    }
+    kill(child, SIGKILL);
+    waitpid(child, NULL, 0);
+    if (!found) return 7;
     return 0;
 }
 EOF
 cc -o /tmp/cwdprobe-main /tmp/cwdprobe-main.c \
   -I "$ROOT/Sources/CWDProbe/include" \
   "$ROOT/Sources/CWDProbe/CWDProbe.c"
-PROBE_CWD="$(/tmp/cwdprobe-main)"
+PROBE_CWD="$(/tmp/cwdprobe-main)" || fail "CWDProbe extra probes failed ($?)"
 [[ -n "$PROBE_CWD" && "$PROBE_CWD" == /* ]] || fail "CWDProbe returned '$PROBE_CWD'"
 pass "CWDProbe -> $PROBE_CWD"
+
+echo "== CWDProbe speed =="
+cat > /tmp/cwdprobe-speed.c <<'EOF'
+#include "CWDProbe.h"
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
+int main(void) {
+    char name[64];
+    pid_t kids[16];
+    int n = 0;
+    pid_t me = getpid();
+    clock_t start = clock();
+    for (int i = 0; i < 2000; i++) {
+        if (name_probe_pid(me, name, sizeof(name)) != 0) return 1;
+        if (child_probe_pids(me, kids, 16, &n) != 0) return 2;
+    }
+    double ms = (double)(clock() - start) * 1000.0 / CLOCKS_PER_SEC;
+    printf("%.1f\n", ms);
+    return ms > 250.0 ? 3 : 0;
+}
+EOF
+cc -o /tmp/cwdprobe-speed /tmp/cwdprobe-speed.c \
+  -I "$ROOT/Sources/CWDProbe/include" \
+  "$ROOT/Sources/CWDProbe/CWDProbe.c"
+SPEED_MS="$(/tmp/cwdprobe-speed)" || fail "CWDProbe 2000 name+child probes too slow or failed"
+pass "CWDProbe 2000 probes in ${SPEED_MS}ms"
 
 echo "== GitStatus =="
 GIT_TMP="$(mktemp -d /tmp/to-git-XXXX)"

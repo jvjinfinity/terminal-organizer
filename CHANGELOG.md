@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.12 — 2026-09-03
+
+Fix: typing in the terminal (including `grok`) was lagging after relaunch.
+
+The 1.3.10 worktree overlay was spawning `ps` / `pgrep` / `lsof` and reading Grok session files on the main thread every 750ms. That work now runs in the background; keystrokes stay on the cheap poll.
+
 ## 1.3.11 — 2026-09-03
 
 Sidebar footer shows this Mac’s version (`1.3.11`) in the bottom left, so you can tell whether you have the latest build.
